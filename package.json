@@ -4,11 +4,12 @@
   "description": "Aplicación para integrar Vimeo con WordPress",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
+    "start": "ts-node src/scripts/telegram-bot.ts",
+    "dev": "ts-node src/scripts/telegram-bot.ts",
     "build": "tsc",
-    "publish:video": "ts-node src/scripts/publish-video.ts",
-    "check:connection": "ts-node src/scripts/check-connection.ts"
+    "check:connection": "ts-node src/scripts/check-connection.ts",
+    "test:bot": "ts-node src/scripts/test-telegram.ts",
+    "test:complete": "ts-node src/scripts/test-complete-post.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,10 +17,14 @@
   "packageManager": "pnpm@10.6.5",
   "dependencies": {
     "@vimeo/vimeo": "^3.0.3",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0",
     "zod": "^3.24.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.2",
+    "@types/node-cron": "^3.0.11",
+    "@types/node-telegram-bot-api": "^0.64.8",
     "@types/vimeo__vimeo": "^3.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"

@@ -129,4 +129,34 @@ export class VimeoService {
       video.privacy.view === "disable" && video.privacy.embed === "whitelist"
     );
   }
+
+  async getLatestVideo(): Promise<VimeoVideo | null> {
+    return new Promise((resolve, reject) => {
+      this.client.request(
+        {
+          method: "GET",
+          path: "/me/videos",
+          query: {
+            per_page: 1,
+            sort: "date",
+            direction: "desc",
+          },
+        },
+        (error, body) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          const videos = body.data;
+          if (!videos || videos.length === 0) {
+            resolve(null);
+            return;
+          }
+
+          resolve(videos[0]);
+        }
+      );
+    });
+  }
 }

@@ -10,6 +10,8 @@ const envSchema = z.object({
   WORDPRESS_CPT: z.string().min(1),
   WORDPRESS_VIMEO_META_KEY: z.string().min(1),
   WORDPRESS_ACF_OPTIONS_SLUG: z.string().min(1),
+  TELEGRAM_BOT_TOKEN: z.string(),
+  TELEGRAM_CHAT_ID: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -26,6 +28,8 @@ export function validateEnv(): Env {
       process.env.WORDPRESS_ACF_OPTIONS_SLUG || "options",
     WORDPRESS_CPT: process.env.WORDPRESS_CPT,
     WORDPRESS_VIMEO_META_KEY: process.env.WORDPRESS_VIMEO_META_KEY,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
   };
 
   const result = envSchema.safeParse(env);

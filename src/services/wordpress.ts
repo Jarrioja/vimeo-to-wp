@@ -205,3 +205,38 @@ export async function getCategory(categoryId: number): Promise<{
     throw error;
   }
 }
+
+export async function uploadMediaFromUrl(imageUrl: string): Promise<number> {
+  try {
+    // Descargar la imagen
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Error al descargar la imagen: ${imageResponse.status}`);
+    }
+
+    const buffer = await imageResponse.arrayBuffer();
+    const filename = imageUrl.split("/").pop() || "image.jpg";
+
+    // Subir la imagen a WordPress
+    const formData = new FormData();
+    formData.append("file", new Blob([buffer]), filename);
+
+    const response = await fetch(`${WORDPRESS_URL}/wp-json/wp/v2/media`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error al subir la imagen: ${response.status}`);
+    }
+
+    const media = await response.json();
+    return media.id;
+  } catch (error) {
+    console.error("❌ Error al subir la imagen:", error);
+    throw error;
+  }
+}

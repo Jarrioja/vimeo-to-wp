@@ -3,13 +3,15 @@ import {
   createPost,
   publishPost,
   getACFOptionsConfig,
+  uploadMediaFromUrl,
 } from "../services/wordpress";
 import { VimeoVideo } from "../types/vimeo";
 import { VimeoWPConfig } from "../types/wordpress";
 
-interface PublishVideoOptions {
-  videoId?: string;
-  dayNumber?: number; // Ahora es opcional
+export interface PublishVideoOptions {
+  videoId: string;
+  dayNumber?: number;
+  thumbnailUrl?: string; // ID de la imagen en WordPress
   forcePublish?: boolean;
 }
 
@@ -103,23 +105,24 @@ export async function publishVideoToWordPress(options: PublishVideoOptions) {
       `,
       status: options.forcePublish ? "publish" : "draft",
       categoria_de_clase_grabada: [categoryId],
+      featured_media: options.thumbnailUrl
+        ? parseInt(options.thumbnailUrl)
+        : undefined,
       acf: {
-        video_id: video.uri.split("/").pop(),
+        video_id: video.uri.split("/").pop() || "",
         video_url: video.link,
         video_duration: video.duration,
         day_number: dayNumber,
-        trainers: dayConfig.trainers,
+        trainers: Object.keys(dayConfig.trainers).join(", "),
       },
     });
 
     console.log("✅ Post creado:", post.id);
 
     if (!options.forcePublish) {
-      console.log("📢 Publicando post...");
-      const publishedPost = await publishPost(post.id!);
-      console.log("✅ Post publicado:", publishedPost.link);
+      console.log("💾 Post guardado como borrador:", post.link);
     } else {
-      console.log("🌐 URL del post:", post.link);
+      console.log("🌐 Post publicado:", post.link);
     }
 
     console.log("\n📋 Resumen de la publicación:");
@@ -127,6 +130,7 @@ export async function publishVideoToWordPress(options: PublishVideoOptions) {
     console.log("ID:", post.id);
     console.log("Título:", formattedTitle);
     console.log("Categoría:", categoryName);
+    console.log("Estado:", options.forcePublish ? "Publicado" : "Borrador");
     console.log("URL:", post.link);
     console.log("--------------------------------\n");
 

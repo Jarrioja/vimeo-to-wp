@@ -3,11 +3,11 @@ import { validateEnv } from "../config/env";
 const { WORDPRESS_CPT } = validateEnv();
 
 export interface TrainerImages {
-  image_1: number | string; // Attachment ID or URL
-  image_2: number | string;
+  image_1: number;
+  image_2: number | false;
 }
 
-export interface TrainersPerDay {
+export interface DayTrainers {
   trainer_1: TrainerImages;
   trainer_2: TrainerImages;
   trainer_3: TrainerImages;
@@ -26,9 +26,20 @@ export interface CategoryInfo {
   filter: string;
 }
 
+export interface Category {
+  term_id: number;
+  name: string;
+  slug: string;
+}
+
+export interface Trainer {
+  name: string;
+  image: string;
+}
+
 export interface DayConfig {
-  category: CategoryInfo;
-  trainers: TrainersPerDay;
+  category: Category;
+  trainers: DayTrainers;
 }
 
 export interface VimeoWPConfig {
@@ -38,7 +49,6 @@ export interface VimeoWPConfig {
   config_day_4: DayConfig;
   config_day_5: DayConfig;
   config_day_6: DayConfig;
-  config_day_7: DayConfig;
 }
 
 export interface WordPressPost {
@@ -82,11 +92,16 @@ export interface WordPressPost {
 export interface CreatePostData {
   title: string;
   content: string;
-  status?: "publish" | "future" | "draft" | "pending" | "private";
-  type?: typeof WORDPRESS_CPT;
-  categoria_de_clase_grabada?: number[];
-  acf?: Record<string, any>;
+  status: "publish" | "draft";
+  categoria_de_clase_grabada: number[];
   featured_media?: number;
+  acf: {
+    video_id: string;
+    video_url: string;
+    video_duration: number;
+    day_number: number;
+    trainers: string | string[];
+  };
 }
 
 export interface UpdatePostData extends Partial<CreatePostData> {
