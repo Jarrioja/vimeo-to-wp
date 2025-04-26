@@ -1,0 +1,27 @@
+{
+  "name": "vimeo-to-wordpress-post",
+  "version": "1.0.0",
+  "description": "Aplicación para integrar Vimeo con WordPress",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "publish:video": "ts-node src/scripts/publish-video.ts",
+    "check:connection": "ts-node src/scripts/check-connection.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.6.5",
+  "dependencies": {
+    "@vimeo/vimeo": "^3.0.3",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.2",
+    "@types/vimeo__vimeo": "^3.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
