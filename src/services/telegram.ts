@@ -10,8 +10,6 @@ const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = validateEnv();
 export class TelegramService {
   private bot: TelegramBot;
   private chatId: string;
-  private activeRequests: Set<string> = new Set();
-  private requestTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
     this.bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
@@ -21,21 +19,6 @@ export class TelegramService {
   // Método para verificar si un chat tiene permiso
   private isAuthorizedChat(chatId: number | string): boolean {
     return chatId.toString() === this.chatId;
-  }
-
-  // Método para limpiar solicitudes activas
-  private cleanupRequest(requestId: string): void {
-    this.activeRequests.delete(requestId);
-    const timeout = this.requestTimeouts.get(requestId);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.requestTimeouts.delete(requestId);
-    }
-  }
-
-  // Método para verificar si hay una solicitud activa
-  private isRequestActive(requestId: string): boolean {
-    return this.activeRequests.has(requestId);
   }
 
   // Método para manejar comandos
@@ -64,32 +47,18 @@ export class TelegramService {
   }
 
   async askForVideoSelection(videos: VimeoVideo[]): Promise<VimeoVideo | null> {
-    const requestId = `video_selection_${Date.now()}`;
-
-    // Verificar si ya hay una solicitud activa
-    if (this.isRequestActive("video_selection")) {
-      await this.sendMessage(
-        "⚠️ Ya hay una selección de video en progreso. Por favor, completa esa primero."
-      );
-      return null;
-    }
-
-    this.activeRequests.add("video_selection");
-
     const message = "Selecciona el video que quieres publicar:";
 
     // Crear botones con los títulos de los videos
     const keyboard = videos.map((video, index) => [
       {
         text: video.name,
-        callback_data: `${requestId}_video_${index}`,
+        callback_data: `video_${index}`,
       },
     ]);
 
     // Agregar botón de cancelar
-    keyboard.push([
-      { text: "❌ Cancelar", callback_data: `${requestId}_cancel` },
-    ]);
+    keyboard.push([{ text: "❌ Cancelar", callback_data: "cancel" }]);
 
     const opts = {
       reply_markup: {
@@ -100,64 +69,33 @@ export class TelegramService {
     await this.bot.sendMessage(this.chatId, message, opts);
 
     return new Promise((resolve) => {
-      // Configurar timeout de 2 horas (7200000 ms)
-      const timeout = setTimeout(() => {
-        this.cleanupRequest("video_selection");
-        this.sendMessage(
-          "⏰ Tiempo de espera agotado. La selección de video ha sido cancelada."
-        );
-        resolve(null);
-      }, 7200000);
-
-      this.requestTimeouts.set(requestId, timeout);
-
-      const callbackHandler = (query: any) => {
-        // Verificar que la respuesta corresponde a esta solicitud
-        if (!query.data?.startsWith(requestId)) {
-          return;
-        }
-
+      this.bot.once("callback_query", (query) => {
         this.bot.answerCallbackQuery(query.id);
-        this.cleanupRequest("video_selection");
 
-        if (query.data === `${requestId}_cancel`) {
+        if (query.data === "cancel") {
           resolve(null);
           return;
         }
 
-        if (query.data?.startsWith(`${requestId}_video_`)) {
-          const index = parseInt(query.data.split("_")[2]);
+        if (query.data?.startsWith("video_")) {
+          const index = parseInt(query.data.split("_")[1]);
           resolve(videos[index]);
           return;
         }
 
         resolve(null);
-      };
-
-      this.bot.once("callback_query", callbackHandler);
+      });
     });
   }
 
   async askForPublishing(videoUrl: string): Promise<boolean> {
-    const requestId = `publishing_${Date.now()}`;
-
-    // Verificar si ya hay una solicitud activa
-    if (this.isRequestActive("publishing")) {
-      await this.sendMessage(
-        "⚠️ Ya hay una confirmación de publicación en progreso. Por favor, completa esa primero."
-      );
-      return false;
-    }
-
-    this.activeRequests.add("publishing");
-
     const message = `¿Quieres publicar la clase de hoy?\n\nVideo: ${videoUrl}`;
     const opts = {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "Sí", callback_data: `${requestId}_yes` },
-            { text: "No", callback_data: `${requestId}_no` },
+            { text: "Sí", callback_data: "yes" },
+            { text: "No", callback_data: "no" },
           ],
         ],
       },
@@ -166,73 +104,16 @@ export class TelegramService {
     await this.bot.sendMessage(this.chatId, message, opts);
 
     return new Promise((resolve) => {
-      // Configurar timeout de 2 horas (7200000 ms)
-      const timeout = setTimeout(() => {
-        this.cleanupRequest("publishing");
-        this.sendMessage(
-          "⏰ Tiempo de espera agotado. La confirmación de publicación ha sido cancelada."
-        );
-        resolve(false);
-      }, 7200000);
-
-      this.requestTimeouts.set(requestId, timeout);
-
-      const callbackHandler = (query: any) => {
-        console.log(`🔍 Callback de confirmación recibido: ${query.data}`);
-        console.log(`🔍 RequestId esperado: ${requestId}`);
-
-        // Verificar que la respuesta corresponde a esta solicitud
-        if (!query.data?.startsWith(requestId)) {
-          console.log(
-            `❌ Callback de confirmación no corresponde a esta solicitud`
-          );
-          return;
-        }
-
-        console.log(`✅ Callback de confirmación válido, procesando...`);
+      this.bot.once("callback_query", (query) => {
         this.bot.answerCallbackQuery(query.id);
-        this.cleanupRequest("publishing");
-
-        if (query.data === `${requestId}_yes`) {
-          console.log(`✅ Usuario confirmó la eliminación`);
-          resolve(true);
-          return;
-        }
-
-        if (query.data === `${requestId}_no`) {
-          console.log(`❌ Usuario canceló la eliminación`);
-          resolve(false);
-          return;
-        }
-
-        console.log(`❌ Callback de confirmación no reconocido: ${query.data}`);
-        resolve(false);
-      };
-
-      this.bot.once("callback_query", callbackHandler);
+        resolve(query.data === "yes");
+      });
     });
-  }
-
-  private formatTrainerName(trainer: string | Trainer): string {
-    if (typeof trainer === "string") return trainer;
-    return trainer.name;
   }
 
   async askForPostSelection(
     posts: WordPressPost[]
   ): Promise<WordPressPost | null> {
-    const requestId = `post_selection_${Date.now()}`;
-
-    // Verificar si ya hay una solicitud activa
-    if (this.isRequestActive("post_selection")) {
-      await this.sendMessage(
-        "⚠️ Ya hay una selección de post en progreso. Por favor, completa esa primero."
-      );
-      return null;
-    }
-
-    this.activeRequests.add("post_selection");
-
     const message = "Selecciona el post que quieres eliminar:";
 
     // Crear botones con los títulos de los posts
@@ -241,14 +122,12 @@ export class TelegramService {
         text: `${post.title?.rendered || "Sin título"} (${new Date(
           post.date || new Date()
         ).toLocaleDateString()})`,
-        callback_data: `${requestId}_post_${index}`,
+        callback_data: `post_${index}`,
       },
     ]);
 
     // Agregar botón de cancelar
-    keyboard.push([
-      { text: "❌ Cancelar", callback_data: `${requestId}_cancel` },
-    ]);
+    keyboard.push([{ text: "❌ Cancelar", callback_data: "cancel" }]);
 
     const opts = {
       reply_markup: {
@@ -259,65 +138,31 @@ export class TelegramService {
     await this.bot.sendMessage(this.chatId, message, opts);
 
     return new Promise((resolve) => {
-      // Configurar timeout de 2 horas (7200000 ms)
-      const timeout = setTimeout(() => {
-        this.cleanupRequest("post_selection");
-        this.sendMessage(
-          "⏰ Tiempo de espera agotado. La selección de post ha sido cancelada."
-        );
-        resolve(null);
-      }, 7200000);
-
-      this.requestTimeouts.set(requestId, timeout);
-
-      const callbackHandler = (query: any) => {
-        console.log(`🔍 Callback recibido: ${query.data}`);
-        console.log(`🔍 RequestId esperado: ${requestId}`);
-
-        // Verificar que la respuesta corresponde a esta solicitud
-        if (!query.data?.startsWith(requestId)) {
-          console.log(`❌ Callback no corresponde a esta solicitud`);
-          return;
-        }
-
-        console.log(`✅ Callback válido, procesando...`);
+      this.bot.once("callback_query", (query) => {
         this.bot.answerCallbackQuery(query.id);
-        this.cleanupRequest("post_selection");
 
-        if (query.data === `${requestId}_cancel`) {
-          console.log(`❌ Usuario canceló la selección`);
+        if (query.data === "cancel") {
           resolve(null);
           return;
         }
 
-        if (query.data?.startsWith(`${requestId}_post_`)) {
-          const index = parseInt(query.data.split("_")[2]);
-          console.log(`✅ Post seleccionado: índice ${index}`);
+        if (query.data?.startsWith("post_")) {
+          const index = parseInt(query.data.split("_")[1]);
           resolve(posts[index]);
           return;
         }
 
-        console.log(`❌ Callback no reconocido: ${query.data}`);
         resolve(null);
-      };
-
-      this.bot.once("callback_query", callbackHandler);
+      });
     });
   }
 
+  private formatTrainerName(trainer: string | Trainer): string {
+    if (typeof trainer === "string") return trainer;
+    return trainer.name;
+  }
+
   async askForTrainer(dayNumber: number): Promise<string> {
-    const requestId = `trainer_${Date.now()}`;
-
-    // Verificar si ya hay una solicitud activa
-    if (this.isRequestActive("trainer")) {
-      await this.sendMessage(
-        "⚠️ Ya hay una selección de entrenador en progreso. Por favor, completa esa primero."
-      );
-      throw new Error("Solicitud de entrenador duplicada");
-    }
-
-    this.activeRequests.add("trainer");
-
     const config = await getACFOptionsConfig();
     if (!config) {
       throw new Error("No se pudo obtener la configuración de WordPress");
@@ -343,7 +188,7 @@ export class TelegramService {
     const keyboard = Object.entries(trainerNames).map(([key, name]) => [
       {
         text: name,
-        callback_data: `${requestId}_${key}`,
+        callback_data: key,
       },
     ]);
 
@@ -358,32 +203,14 @@ export class TelegramService {
     );
 
     return new Promise((resolve, reject) => {
-      // Configurar timeout de 2 horas (7200000 ms)
-      const timeout = setTimeout(() => {
-        this.cleanupRequest("trainer");
-        this.sendMessage(
-          "⏰ Tiempo de espera agotado. La selección de entrenador ha sido cancelada."
-        );
-        reject(new Error("Tiempo de espera agotado"));
-      }, 7200000);
-
-      this.requestTimeouts.set(requestId, timeout);
-
-      const callbackHandler = async (query: any) => {
-        // Verificar que la respuesta corresponde a esta solicitud
-        if (!query.data?.startsWith(requestId)) {
-          return;
-        }
-
+      this.bot.once("callback_query", async (query) => {
         await this.bot.answerCallbackQuery(query.id);
-        this.cleanupRequest("trainer");
-
         if (!query.data) {
           reject(new Error("No se recibió respuesta válida"));
           return;
         }
 
-        const trainerKey = query.data.replace(`${requestId}_`, "");
+        const trainerKey = query.data;
         const trainer =
           dayConfig.trainers[trainerKey as keyof typeof dayConfig.trainers];
 
@@ -407,9 +234,7 @@ export class TelegramService {
         }
 
         resolve(imageId.toString());
-      };
-
-      this.bot.once("callback_query", callbackHandler);
+      });
     });
   }
 
