@@ -130,14 +130,14 @@ export class VimeoService {
     );
   }
 
-  async getLatestVideo(): Promise<VimeoVideo | null> {
+  async getLatestVideos(limit: number = 5): Promise<VimeoVideo[]> {
     return new Promise((resolve, reject) => {
       this.client.request(
         {
           method: "GET",
           path: "/me/videos",
           query: {
-            per_page: 1,
+            per_page: limit,
             sort: "date",
             direction: "desc",
           },
@@ -150,11 +150,11 @@ export class VimeoService {
 
           const videos = body.data;
           if (!videos || videos.length === 0) {
-            resolve(null);
+            resolve([]);
             return;
           }
 
-          resolve(videos[0]);
+          resolve(videos);
         }
       );
     });

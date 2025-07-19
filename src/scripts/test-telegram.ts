@@ -8,12 +8,15 @@ async function testTelegramBot() {
     const telegram = new TelegramService();
     const vimeo = new VimeoService();
 
-    // Obtener el último video de Vimeo
-    console.log("📹 Obteniendo último video de Vimeo...");
-    const latestVideo = await vimeo.getLatestVideo();
-    if (!latestVideo) {
+    // Obtener los últimos videos de Vimeo
+    console.log("📹 Obteniendo últimos videos de Vimeo...");
+    const latestVideos = await vimeo.getLatestVideos();
+    if (!latestVideos || latestVideos.length === 0) {
       throw new Error("No se encontró ningún video en Vimeo");
     }
+
+    // Seleccionar el primer video para la prueba
+    const latestVideo = latestVideos[0];
     console.log("✅ Video encontrado:", latestVideo.name);
 
     // Probar mensaje simple

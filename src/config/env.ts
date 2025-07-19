@@ -1,4 +1,10 @@
 import { z } from "zod";
+import dotenv from "dotenv";
+import dotenvExpand from "dotenv-expand";
+
+// Cargar variables de entorno desde .env
+const env = dotenv.config();
+dotenvExpand.expand(env);
 
 const envSchema = z.object({
   VIMEO_CLIENT_ID: z.string().min(1),

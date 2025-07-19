@@ -206,6 +206,53 @@ export async function getCategory(categoryId: number): Promise<{
   }
 }
 
+export async function getLatestPosts(
+  limit: number = 5
+): Promise<WordPressPost[]> {
+  try {
+    const response = await fetch(
+      `${WORDPRESS_URL}/wp-json/wp/v2/${WORDPRESS_CPT}?per_page=${limit}&orderby=date&order=desc&status=publish`,
+      {
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Error al obtener los últimos posts:", error);
+    throw error;
+  }
+}
+
+export async function deletePost(postId: number): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `${WORDPRESS_URL}/wp-json/wp/v2/${WORDPRESS_CPT}/${postId}?force=true`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("❌ Error al eliminar el post:", error);
+    throw error;
+  }
+}
+
 export async function uploadMediaFromUrl(imageUrl: string): Promise<number> {
   try {
     // Descargar la imagen
