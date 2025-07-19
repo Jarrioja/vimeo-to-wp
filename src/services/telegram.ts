@@ -178,24 +178,34 @@ export class TelegramService {
       this.requestTimeouts.set(requestId, timeout);
 
       const callbackHandler = (query: any) => {
+        console.log(`🔍 Callback de confirmación recibido: ${query.data}`);
+        console.log(`🔍 RequestId esperado: ${requestId}`);
+
         // Verificar que la respuesta corresponde a esta solicitud
         if (!query.data?.startsWith(requestId)) {
+          console.log(
+            `❌ Callback de confirmación no corresponde a esta solicitud`
+          );
           return;
         }
 
+        console.log(`✅ Callback de confirmación válido, procesando...`);
         this.bot.answerCallbackQuery(query.id);
         this.cleanupRequest("publishing");
 
         if (query.data === `${requestId}_yes`) {
+          console.log(`✅ Usuario confirmó la eliminación`);
           resolve(true);
           return;
         }
 
         if (query.data === `${requestId}_no`) {
+          console.log(`❌ Usuario canceló la eliminación`);
           resolve(false);
           return;
         }
 
+        console.log(`❌ Callback de confirmación no reconocido: ${query.data}`);
         resolve(false);
       };
 
@@ -261,25 +271,33 @@ export class TelegramService {
       this.requestTimeouts.set(requestId, timeout);
 
       const callbackHandler = (query: any) => {
+        console.log(`🔍 Callback recibido: ${query.data}`);
+        console.log(`🔍 RequestId esperado: ${requestId}`);
+
         // Verificar que la respuesta corresponde a esta solicitud
         if (!query.data?.startsWith(requestId)) {
+          console.log(`❌ Callback no corresponde a esta solicitud`);
           return;
         }
 
+        console.log(`✅ Callback válido, procesando...`);
         this.bot.answerCallbackQuery(query.id);
         this.cleanupRequest("post_selection");
 
         if (query.data === `${requestId}_cancel`) {
+          console.log(`❌ Usuario canceló la selección`);
           resolve(null);
           return;
         }
 
         if (query.data?.startsWith(`${requestId}_post_`)) {
           const index = parseInt(query.data.split("_")[2]);
+          console.log(`✅ Post seleccionado: índice ${index}`);
           resolve(posts[index]);
           return;
         }
 
+        console.log(`❌ Callback no reconocido: ${query.data}`);
         resolve(null);
       };
 
